@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  db:
+  postgres:
     image: postgres:latest
-    container_name: goseed
+    container_name: postgres-goseed
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -12,7 +12,22 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql-goseed
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: goseed
+      MYSQL_DATABASE: goseed
+      MYSQL_USER: goseed
+      MYSQL_PASSWORD: goseed
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
 
 volumes:
-  db-data:
+  postgres-data:
+  mysql-data:

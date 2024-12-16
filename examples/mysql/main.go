@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/ezrantn/goseed"
-	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // User defines the structure of the users table.
@@ -39,15 +39,16 @@ func seedConfig() []goseed.TableSeeder {
 }
 
 func main() {
-	db, err := sql.Open("postgres", "postgres://postgres:goseed@localhost:5432/goseed?sslmode=disable")
+	db, err := sql.Open("mysql", "goseed:goseed@tcp(localhost:3306)/goseed")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-
 	defer db.Close()
 
+	adapter := &goseed.MySQLAdapter{DB: db}
+
 	// Create a new Goseed instance
-	seed, err := goseed.NewGoSeed(db)
+	seed, err := goseed.NewGoSeed(adapter)
 	if err != nil {
 		return
 	}

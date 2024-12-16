@@ -1,11 +1,11 @@
-build:
-	@go build -o bin/goseed examples/main.go
-
-run: build
-	@./bin/goseed
-
 test: 
 	@go test -v ./...
 
 fmt:
 	@go fmt ./...
+
+pg-seed:
+	@go run examples/postgres/main.go
+
+mysql-seed:
+	@go run examples/mysql/main.go

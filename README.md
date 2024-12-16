@@ -1,6 +1,6 @@
 # goseed - database seeder
 
-goseed is a library to seed random data into a PostgreSQL database using models and `faker`-generated values for testing, development, or prototyping.
+goseed is a library to seed random data into a database using models and `faker`-generated values for testing, development, or prototyping.
 
 ## Installation
 
@@ -19,7 +19,12 @@ go get github.com/ezrantn/goseed
   
 ## Usage
 
-See the `examples/` directory for implementation examples.
+See the `examples/` directory for implementation examples based on your choice of database.
+
+goseed currently supports seeding for the following databases:
+
+- PostgreSQL
+- MySQL
 
 For the `faker` struct tag, refer to their documentation [here](https://github.com/go-faker/faker/blob/main/example_with_tags_test.go).
 
