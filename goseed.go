@@ -11,7 +11,7 @@ import (
 )
 
 /*
-	This file contains an implementation of goseed, a database seeder library for PostgreSQL.
+	This file contains an implementation of goseed, a database seeder library for Go.
 	Developed by: @ezrantn
 	GitHub: github.com/ezrantn/goseed
 	Contact: ezrantn@proton.me
