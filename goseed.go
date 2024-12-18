@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/go-faker/faker/v4"
@@ -22,7 +21,7 @@ import (
 type DBAdapter interface {
 	Ping() error
 	IsTableExists(tableName string) (bool, error)
-	InsertRow(tableName string, columns []string, values []any) error
+	InsertRow(tableName string, columns []string, values [][]any) error
 	GetColumns(tableName string) ([]string, error)
 }
 
@@ -30,7 +29,8 @@ type DBAdapter interface {
 type TableSeeder struct {
 	TableName string
 	RowCount  int
-	Model     interface{}
+	Model     any
+	BatchSize int
 }
 
 // Seeder orchestrates the database seeding process
@@ -92,22 +92,39 @@ func (s *Seeder) Run() error {
 			return err
 		}
 
+		// Batch size for inserting
+		batchSize := table.BatchSize
+		var valuesBatch [][]any
+
 		// Seed rows
 		for i := 0; i < table.RowCount; i++ {
 			// Populate the struct using Faker
 			row := reflect.New(reflect.TypeOf(table.Model)).Interface()
-			if err := faker.FakeData(row); err != nil {
-				s.logError("Failed to generate fake data using Faker")
-				return err
+			if err := faker.FakeData(&row); err != nil {
+				return fmt.Errorf("failed to generate fake data for %s: %v", table.TableName, err)
 			}
 
 			// Convert struct to columns and value
 			_, values := structToColumnsAndValues(row)
+			valuesBatch = append(valuesBatch, values)
 
-			// Build and execute query
-			if err := s.Adapter.InsertRow(table.TableName, columns, values); err != nil {
-				s.logError(fmt.Sprintf("Error inserting data into table '%s': %v", table.TableName, err))
-				return err
+			// Insert in batches
+			if len(valuesBatch) >= batchSize || i == table.RowCount-1 {
+				// Use batch insert method specific to the adapter
+				if postgresAdapter, ok := s.Adapter.(*PostgresAdapter); ok {
+					if err := postgresAdapter.InsertRow(table.TableName, columns, valuesBatch); err != nil {
+						s.logError(fmt.Sprintf("Error inserting batch into table '%s': %v ", table.TableName, err))
+						return err
+					}
+				} else if mysqlAdapter, ok := s.Adapter.(*MySQLAdapter); ok {
+					if err := mysqlAdapter.InsertRow(table.TableName, columns, valuesBatch); err != nil {
+						s.logError(fmt.Sprintf("Error inserting batch into table '%s': %v", table.TableName, err))
+						return err
+					}
+				}
+
+				// Reset batch
+				valuesBatch = [][]any{}
 			}
 		}
 	}
@@ -129,17 +146,6 @@ func structToColumnsAndValues(model interface{}) ([]string, []interface{}) {
 	}
 
 	return columns, values
-}
-
-// Helper: Builds SQL Insert query
-func buildInsertQuery(tableName string, columns []string) string {
-	colNames := "(" + strings.Join(columns, ", ") + ")"
-	valPlaceholders := make([]string, len(columns))
-	for i := range columns {
-		valPlaceholders[i] = fmt.Sprintf("$%d", i+1)
-	}
-	valPlaceholdersStr := "(" + strings.Join(valPlaceholders, ", ") + ")"
-	return fmt.Sprintf("INSERT INTO %s %s VALUES %s", tableName, colNames, valPlaceholdersStr)
 }
 
 // Helper: Print out error log

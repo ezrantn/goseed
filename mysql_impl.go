@@ -1,6 +1,10 @@
 package goseed
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+	"strings"
+)
 
 type MySQLAdapter struct {
 	DB *sql.DB
@@ -17,9 +21,27 @@ func (m *MySQLAdapter) IsTableExists(tableName string) (bool, error) {
 	return count > 0, err
 }
 
-func (m *MySQLAdapter) InsertRow(tableName string, columns []string, values []interface{}) error {
-	query := buildInsertQuery(tableName, columns)
-	_, err := m.DB.Exec(query, values...)
+func (m *MySQLAdapter) InsertRow(tableName string, columns []string, valuesList [][]any) error {
+	// Prepare the batch insert query
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", tableName, strings.Join(columns, ", "))
+
+	// Prepare placeholders
+	var placeholderGroups []string
+	var flattenedValues []interface{}
+
+	for _, values := range valuesList {
+		placeholders := make([]string, len(values))
+		for range values {
+			placeholders = append(placeholders, "?")
+		}
+		placeholderGroups = append(placeholderGroups, fmt.Sprintf("(%s)", strings.Join(placeholders, ", ")))
+		flattenedValues = append(flattenedValues, values...)
+	}
+
+	query += strings.Join(placeholderGroups, ", ")
+
+	// Execute the batch insert
+	_, err := m.DB.Exec(query, flattenedValues...)
 	return err
 }
 
