@@ -85,7 +85,6 @@ func (s *Seeder) Run() error {
 			return fmt.Errorf("table '%s' does not exist in the database", table.TableName)
 		}
 
-		// Validate the columns in the model
 		columns, err := s.Adapter.GetColumns(table.TableName)
 		if err != nil {
 			s.logError(fmt.Sprintf("Column validation failed for table '%s': %v", table.TableName, err))
@@ -104,23 +103,20 @@ func (s *Seeder) Run() error {
 				return fmt.Errorf("failed to generate fake data for %s: %v", table.TableName, err)
 			}
 
-			// Convert struct to columns and value
-			_, values := structToColumnsAndValues(row)
+			// Convert struct to columns and values using dbColumns
+			_, values, err := structToColumnsAndValues(row, columns)
+			if err != nil {
+				s.logError(fmt.Sprintf("Error mapping columns for table '%s': %v", table.TableName, err))
+				return err
+			}
+
 			valuesBatch = append(valuesBatch, values)
 
 			// Insert in batches
 			if len(valuesBatch) >= batchSize || i == table.RowCount-1 {
-				// Use batch insert method specific to the adapter
-				if postgresAdapter, ok := s.Adapter.(*PostgresAdapter); ok {
-					if err := postgresAdapter.InsertRow(table.TableName, columns, valuesBatch); err != nil {
-						s.logError(fmt.Sprintf("Error inserting batch into table '%s': %v ", table.TableName, err))
-						return err
-					}
-				} else if mysqlAdapter, ok := s.Adapter.(*MySQLAdapter); ok {
-					if err := mysqlAdapter.InsertRow(table.TableName, columns, valuesBatch); err != nil {
-						s.logError(fmt.Sprintf("Error inserting batch into table '%s': %v", table.TableName, err))
-						return err
-					}
+				if err := s.Adapter.InsertRow(table.TableName, columns, valuesBatch); err != nil {
+					s.logError(fmt.Sprintf("Error inserting batch into table '%s': %v", table.TableName, err))
+					return err
 				}
 
 				// Reset batch
@@ -134,18 +130,32 @@ func (s *Seeder) Run() error {
 }
 
 // Helper: Converts struct to columns and values
-func structToColumnsAndValues(model interface{}) ([]string, []interface{}) {
+func structToColumnsAndValues(model interface{}, dbColumns []string) ([]string, []interface{}, error) {
 	val := reflect.ValueOf(model).Elem()
 	typ := val.Type()
 
-	var columns []string
-	var values []interface{}
+	// Map struct fields by their `db` tag
+	fieldMap := make(map[string]interface{})
 	for i := 0; i < val.NumField(); i++ {
-		columns = append(columns, typ.Field(i).Tag.Get("db"))
-		values = append(values, val.Field(i).Interface())
+		dbTag := typ.Field(i).Tag.Get("db")
+		if dbTag != "" {
+			fieldMap[dbTag] = val.Field(i).Interface()
+		}
 	}
 
-	return columns, values
+	// Match columns with struct fields
+	var columns []string
+	var values []interface{}
+	for _, col := range dbColumns {
+		if value, exists := fieldMap[col]; exists {
+			columns = append(columns, col)
+			values = append(values, value)
+		} else {
+			return nil, nil, fmt.Errorf("column '%s' not found in struct tags", col)
+		}
+	}
+
+	return columns, values, nil
 }
 
 // Helper: Print out error log

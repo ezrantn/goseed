@@ -35,12 +35,12 @@ func seedConfig() []goseed.TableSeeder {
 			TableName: "products",
 			Model:     product{},
 			RowCount:  100,
+			BatchSize: 100,
 		},
 	}
 }
 
 func main() {
-
 	db, err := sql.Open("postgres", "postgres://postgres:goseed@localhost:5432/goseed?sslmode=disable")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
