@@ -10,7 +10,7 @@ import (
 type MockDBAdapter struct {
 	PingFunc        func() error
 	IsTableExistsFn func(tableName string) (bool, error)
-	InsertRowFn     func(tableName string, columns []string, values []any) error
+	InsertRowFn     func(tableName string, columns []string, values [][]any) error
 	GetColumnsFn    func(tableName string) ([]string, error)
 }
 
@@ -30,7 +30,7 @@ func (m *MockDBAdapter) IsTableExists(tableName string) (bool, error) {
 	return true, nil
 }
 
-func (m *MockDBAdapter) InsertRow(tableName string, columns []string, values []any) error {
+func (m *MockDBAdapter) InsertRow(tableName string, columns []string, values [][]any) error {
 	if m.InsertRowFn != nil {
 		return m.InsertRowFn(tableName, columns, values)
 	}
@@ -65,7 +65,7 @@ func TestSeeder(t *testing.T) {
 			}
 			return false, fmt.Errorf("table %s does not exist", tableName)
 		},
-		InsertRowFn: func(tableName string, columns []string, values []any) error {
+		InsertRowFn: func(tableName string, columns []string, values [][]any) error {
 			if tableName != "users" {
 				return errors.New("invalid table")
 			}

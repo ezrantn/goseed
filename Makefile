@@ -4,6 +4,9 @@ test:
 fmt:
 	@go fmt ./...
 
+up:
+	@sudo docker-compose up
+
 pg-seed:
 	@go run examples/postgres/main.go
 

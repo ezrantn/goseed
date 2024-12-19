@@ -29,11 +29,13 @@ func seedConfig() []goseed.TableSeeder {
 			TableName: "users",
 			Model:     user{},
 			RowCount:  100,
+			BatchSize: 100,
 		},
 		{
 			TableName: "products",
 			Model:     product{},
-			RowCount:  50,
+			RowCount:  100,
+			BatchSize: 100,
 		},
 	}
 }
